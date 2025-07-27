@@ -1,101 +1,172 @@
---// ESP
-_G.TeamCheck = true
-_G.ShowTeamESP = false
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-local camera = workspace.CurrentCamera
-local runService = game:GetService("RunService")
+local CurrentCamera = workspace.CurrentCamera
+local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
 
-local ESPItems = {}
+local Settings = {
+    AimAssist = {
+        Enabled = false, -- Toggle with your keybind below
+        AimPart = "Head", -- "Head" or "HumanoidRootPart"
+        TeamCheck = false, -- Ignore teammates if true
+        Keybind = Enum.KeyCode.T, -- Use Enum.Keycode or quotes eg. Enum.Keycode.K or "K"
+        FOVCircle = false, -- A circle to indicate your range
+        FOVRadius = 250, -- How big your range will be
+        FOVColour = Color3.fromRGB(255, 255, 255), -- The colour of your circle
+        FOVFilled = false, -- If your circle is filled in with the colour above 
+        FOVTransparency = 1, -- 1 = not transparent 0 = transparent
+        WallCheck = nil, -- If you want to AimAssist through walls (NOT FINISHED)
+    },
 
-function disableESP(instance)
-    if typeof(instance) ~= "Instance" then warn("instance is not valid: disableESP") return end
-    local espData = ESPItems[instance]
-    if espData then
-        if espData.item then
-            espData.item.Visible = false
-        end
-        ESPItems[instance] = nil
-    end
+    ESP = {
+
+    },
+}
+
+local FOVCircle = Drawing.new("Circle") -- bassicaly just refrencing the settings we put above
+FOVCircle.Visible = false
+FOVCircle.Radius = Settings.AimAssist.FOVRadius
+FOVCircle.Color = Settings.AimAssist.FOVColour
+FOVCircle.Thickness = 1 -- i mean if you wanna change this then.... you can but like idk
+FOVCircle.Filled = Settings.AimAssist.FOVFilled
+FOVCircle.Transparency = Settings.AimAssist.FOVTransparency
+
+if Settings.AimAssist.FOVCircle then 
+    FOVCircle.Position = Vector2.new(CurrentCamera.ViewportSize.X / 2, CurrentCamera.ViewportSize.Y / 2)
 end
 
-function enableESP(instance)
-    if typeof(instance) ~= "Instance" then warn("instance is not valid: enableESP") return end
-    local espData = ESPItems[instance]
-    if espData then
-        if espData.item then
-            espData.item.Visible = true
+-- too lazy to document
+local function GetClosestPlayer()
+    local ClosestDistance = math.huge
+    local ClosestCharacter = nil
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= Player and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character:FindFirstChild(Settings.AimAssist.AimPart) then
+            local humanoid = plr.Character:FindFirstChild("Humanoid")
+            if humanoid.Health > 0 then
+                if Settings.AimAssist.TeamCheck and plr.Team == Player.Team then
+                    continue
+                end
+
+                local part = plr.Character[Settings.AimAssist.AimPart]
+                local screenPoint, onScreen = CurrentCamera:WorldToScreenPoint(part.Position)
+                if onScreen then
+                    local distance = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+                    if distance < ClosestDistance and Settings.AimAssist.FOVRadius then
+                            ClosestDistance = distance
+                            ClosestCharacter = plr.Character
+                    end
+                end
+            end
         end
-        ESPItems[instance] = nil
-    end
-end
-
-
-function removeESP(instance: Instance)
-    if typeof(instance) ~= "Instance" then warn("instance is not valid: removeESP") return end
-    local espData = ESPItems[instance]
-    if espData then
-        if espData.item then
-            espData.item:Remove()
-        end
-        ESPItems[instance] = nil
-    end
-end
-
-function addESP(instance: Instance)
-    if typeof(instance) ~= "Instance" then warn("instance is not valid: addESP") return end
-
-   local espData = ESPItems[instance]
-
-   if espData then
-        if espData.item then 
-            return
-        end
-   end
-
-    local esp = Drawing.new("Text")
-    esp.Visible = false
-    esp.Center = true
-    esp.Outline = true
-    esp.Font = 2
-    esp.Color = Color3.fromRGB(255, 255, 255)
-    esp.Size = 13
-
-    local renderstepped = nil
-
-    renderstepped = runService.RenderStepped:Connect(function()
-        local instancePos, instanceOnScreen = camera:WorldToViewportPoint(instance.Head.Position)
-
-        if instance.Name == game.Players.LocalPlayer.Name then return end
-        if instanceOnScreen then
-            esp.Position = Vector2.new(instancePos.X, instancePos.Y)
-            esp.Visible = true
-            esp.Text = instance.Name
-        else
-            esp.Visible = false
-        end
-
-        instance.Destroying:Connect(function()
-            removeESP(instance)
-        end)
-    end)
-
-    ESPItems[instance] = {
-        item = esp
-    }
-
-end
-
-while task.wait() do
-    for _, v in game.Players:GetPlayers() do
-        addESP(v.Character)
-    end
-end
-
-game.Players.PlayerRemoving:Connect(function(player)
-    local espData = ESPItems[player.Character]
-
-    if espData then
-        removeESP(player.Character)
     end
 
+    return ClosestCharacter
+end
+
+-- too lazy to document
+RunService.RenderStepped:Connect(function()
+    if Settings.AimAssist.Enabled then
+        local closestCharacter = GetClosestPlayer()
+        if closestCharacter and closestCharacter:FindFirstChild(Settings.AimAssist.AimPart) then
+            local aimPart = closestCharacter[Settings.AimAssist.AimPart]
+            local success, err = pcall(function()
+                CurrentCamera.CFrame = CFrame.new(CurrentCamera.CFrame.Position, aimPart.Position)
+            end)
+            if not success then
+                warn("AimAssist Camera Error:", err)
+            end
+        end
+    end
+
+    if FOVCircle.Visible and Settings.AimAssist.FOVCircle then
+        FOVCircle.Position = Vector2.new(CurrentCamera.ViewportSize.X / 2, CurrentCamera.ViewportSize.Y / 2)
+        FOVCircle.Radius = Settings.AimAssist.FOVRadius
+        FOVCircle.Color = Settings.AimAssist.FOVColour
+        FOVCircle.Filled = Settings.AimAssist.FOVFilled
+        FOVCircle.Transparency = Settings.AimAssist.FOVTransparency
+    end
+
+    if Settings.AimAssist.Enabled and Settings.AimAssist.FOVCircle then
+        FOVCircle.Visible = true
+    else
+        FOVCircle.Visible = false
+    end
 end)
+
+shared.VapeIndependent = true
+local vape = loadstring(game:HttpGet('https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/main/NewMainScript.lua', true))()
+
+local AimAssist = vape.Categories.Combat:CreateModule({
+    Name = 'AimAssist',
+    Function = function(callback)
+        Settings.AimAssist.Enabled = callback
+        print("AimAssist Toggled:", Settings.AimAssist.Enabled)
+    end,
+    Tooltip = 'Aims for you'
+})
+
+local FOVCircleToggle
+local FilledFOVCircleToggle
+local FOVCircleColourToggle
+local AimAssistTeamCheck
+local FOVCircleRadiusSlider
+local FOVCircleTransparencySlider
+local AimAssistAimPart
+
+AimAssistTeamCheck = AimAssist:CreateToggle({
+    Name = 'Team Check',
+    Function = function(callback)
+        Settings.AimAssist.TeamCheck = not Settings.AimAssist.TeamCheck
+    end,
+    Tooltip = 'Ignore teammates if true'
+})
+
+FOVCircleToggle = AimAssist:CreateToggle({
+    Name = 'FOV Circle',
+    Function = function(callback)
+        Settings.AimAssist.FOVCircle = not Settings.AimAssist.FOVCircle
+    end,
+    Tooltip = 'A circle to indicate your range'
+})
+
+FilledFOVCircleToggle = AimAssist:CreateToggle({
+    Name = 'Filled',
+    Function = function(callback)
+        Settings.AimAssist.FOVFilled = not Settings.AimAssist.FOVFilled
+    end,
+    Tooltip = 'If your circle is filled in.'
+})
+
+FOVCircleRadiusSlider = AimAssist:CreateSlider({
+    Name = 'Radius',
+    Min = 1,
+    Max = 500,
+    Function = function(val)
+        Settings.AimAssist.FOVRadius = val
+    end,
+    Tooltip = 'How big your range will be'
+})
+
+FOVCircleColourToggle = AimAssist:CreateColorSlider({
+    Name = 'Colour',
+    Function = function(hue, sat, val, opacity)
+        Settings.AimAssist.FOVColour = Color3.fromHSV(hue, sat, val)
+        Settings.AimAssist.FOVTransparency = opacity
+    end,
+    Tooltip = 'The colour of your circle'
+})
+
+
+AimAssistAimPart = AimAssist:CreateDropdown({
+    Name = 'AimPart',
+    List = {'Head', 'HumanoidRootPart'},
+    Function = function(val)
+        Settings.AimAssist.AimPart = val
+    end,
+    Tooltip = 'Where the aimassist aims. Head or Torso'
+})
+
+vape:Init()
