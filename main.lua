@@ -1,3 +1,5 @@
+-- credits to 0x83 for aimbot tut, build so much on it :D
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
