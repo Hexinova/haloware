@@ -1,5 +1,4 @@
 -- credits to 0x83 for aimbot tut, build so much on it :D
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -41,32 +40,42 @@ end
 
 -- too lazy to document
 local function GetClosestPlayer()
+    local BestTarget = nil
+    local BestHealth = math.huge
     local ClosestDistance = math.huge
-    local ClosestCharacter = nil
 
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= Player and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character:FindFirstChild(Settings.AimAssist.AimPart) then
             local humanoid = plr.Character:FindFirstChild("Humanoid")
+
             if humanoid.Health > 0 then
                 if Settings.AimAssist.TeamCheck and plr.Team == Player.Team then
                     continue
                 end
 
-                local part = plr.Character[Settings.AimAssist.AimPart]
-                local screenPoint, onScreen = CurrentCamera:WorldToScreenPoint(part.Position)
+                local aimPart = plr.Character[Settings.AimAssist.AimPart]
+                local screenPoint, onScreen = CurrentCamera:WorldToScreenPoint(aimPart.Position)
+
                 if onScreen then
                     local distance = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
-                    if distance < ClosestDistance and Settings.AimAssist.FOVRadius then
+                    if distance <= Settings.AimAssist.FOVRadius then
+                        -- Priority logic:
+                        -- 1. Lower HP gets top priority
+                        -- 2. If same HP, pick closer one
+                        if humanoid.Health < BestHealth or (humanoid.Health == BestHealth and distance < ClosestDistance) then
+                            BestHealth = humanoid.Health
                             ClosestDistance = distance
-                            ClosestCharacter = plr.Character
+                            BestTarget = plr.Character
+                        end
                     end
                 end
             end
         end
     end
 
-    return ClosestCharacter
+    return BestTarget
 end
+
 
 -- too lazy to document
 RunService.RenderStepped:Connect(function()
