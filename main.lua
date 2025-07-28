@@ -1,4 +1,5 @@
--- credits to 0x83 for aimbot tut, build so much on it :D
+--credits to 0x83 for 25% of the aimbot
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -18,7 +19,7 @@ local Settings = {
         FOVColour = Color3.fromRGB(255, 255, 255), -- The colour of your circle
         FOVFilled = false, -- If your circle is filled in with the colour above 
         FOVTransparency = 1, -- 1 = not transparent 0 = transparent
-        WallCheck = nil, -- If you want to AimAssist through walls (NOT FINISHED)
+        WallCheck = false, -- If you want to AimAssist through walls (NOT FINISHED)
     },
 
     ESP = {
@@ -34,9 +35,30 @@ FOVCircle.Thickness = 1 -- i mean if you wanna change this then.... you can but 
 FOVCircle.Filled = Settings.AimAssist.FOVFilled
 FOVCircle.Transparency = Settings.AimAssist.FOVTransparency
 
-if Settings.AimAssist.FOVCircle then 
+if Settings.AimAssist.FOVCircle then
     FOVCircle.Position = Vector2.new(CurrentCamera.ViewportSize.X / 2, CurrentCamera.ViewportSize.Y / 2)
 end
+
+local function IsVisible(targetPart)
+    local origin = CurrentCamera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {Player.Character}
+    rayParams.IgnoreWater = true
+
+    local result = workspace:Raycast(origin, direction, rayParams)
+
+    if result then
+        -- Check if what we hit is part of the target's character
+        return result.Instance:IsDescendantOf(targetPart.Parent)
+    end
+
+    return false -- If it hit nothing, assume not visible
+end
+
+
 
 -- too lazy to document
 local function GetClosestPlayer()
@@ -59,9 +81,12 @@ local function GetClosestPlayer()
                 if onScreen then
                     local distance = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
                     if distance <= Settings.AimAssist.FOVRadius then
+                        if Settings.AimAssist.WallCheck and not IsVisible(aimPart) then
+                            continue
+                        end
                         -- Priority logic:
-                        -- 1. Lower HP gets top priority
-                        -- 2. If same HP, pick closer one
+                         -- 1. Lower HP gets top priority
+                         -- 2. If same HP, pick closer one
                         if humanoid.Health < BestHealth or (humanoid.Health == BestHealth and distance < ClosestDistance) then
                             BestHealth = humanoid.Health
                             ClosestDistance = distance
@@ -75,7 +100,6 @@ local function GetClosestPlayer()
 
     return BestTarget
 end
-
 
 -- too lazy to document
 RunService.RenderStepped:Connect(function()
@@ -122,23 +146,32 @@ local AimAssist = vape.Categories.Combat:CreateModule({
 local FOVCircleToggle
 local FilledFOVCircleToggle
 local FOVCircleColourToggle
-local AimAssistTeamCheck
+local AimAssistTeamCheckToggle
+local AimAssistWallCheckToggle
 local FOVCircleRadiusSlider
 local FOVCircleTransparencySlider
 local AimAssistAimPart
 
-AimAssistTeamCheck = AimAssist:CreateToggle({
+AimAssistTeamCheckToggle = AimAssist:CreateToggle({
     Name = 'Team Check',
     Function = function(callback)
-        Settings.AimAssist.TeamCheck = not Settings.AimAssist.TeamCheck
+        Settings.AimAssist.TeamCheck = callback
     end,
     Tooltip = 'Ignore teammates if true'
+})
+
+AimAssistWallCheckToggle = AimAssist:CreateToggle({
+    Name = 'Wall Check',
+    Function = function(callback)
+        Settings.AimAssist.WallCheck = callback
+    end,
+    Tooltip = 'Ignore targets behind walls'
 })
 
 FOVCircleToggle = AimAssist:CreateToggle({
     Name = 'FOV Circle',
     Function = function(callback)
-        Settings.AimAssist.FOVCircle = not Settings.AimAssist.FOVCircle
+        Settings.AimAssist.FOVCircle = callback
     end,
     Tooltip = 'A circle to indicate your range'
 })
@@ -146,7 +179,7 @@ FOVCircleToggle = AimAssist:CreateToggle({
 FilledFOVCircleToggle = AimAssist:CreateToggle({
     Name = 'Filled',
     Function = function(callback)
-        Settings.AimAssist.FOVFilled = not Settings.AimAssist.FOVFilled
+        Settings.AimAssist.FOVFilled = callback
     end,
     Tooltip = 'If your circle is filled in.'
 })
