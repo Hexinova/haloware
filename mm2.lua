@@ -21,7 +21,7 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     AutoWin = Window:AddTab({ Title = "Auto Win", Icon = "crown" }),
-    Premium = Window:AddTab({ Title = "Settings", Icon = "star" }),
+    Premium = Window:AddTab({ Title = "Premium", Icon = "star" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
 }
 
@@ -44,7 +44,7 @@ Fluent:Notify({
 RunService.RenderStepped:Connect(function(deltaTime)
     if _G.AutoWin then
         for i, v in Players:GetPlayers() do
-            if v.Name == Player.Name then return end
+            if v.Name == Player.Name then continue end
             if v.Backpack then
                 if v.Backpack:FindFirstChild("Knife") then
                     print(v.Name, " has the knife")
@@ -56,7 +56,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         for i, v in game.Workspace:GetChildren() do
-            if v.Name == Player.Name then return end
+            if v.Name == Player.Name then continue end
             if v:FindFirstChild("Humanoid") then
                 if v:FindFirstChild("Knife") then
                     print(v.Name, " has the knife")
