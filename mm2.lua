@@ -1,6 +1,8 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
+local Player = Players.LocalPlayer
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 Script = {
@@ -42,6 +44,7 @@ Fluent:Notify({
 RunService.RenderStepped:Connect(function(deltaTime)
     if _G.AutoWin then
         for i, v in Players:GetPlayers() do
+            if v.Name == Player.Name then return end
             if v.Backpack then
                 if v.Backpack:FindFirstChild("Knife") then
                     print(v.Name, " has the knife")
@@ -53,14 +56,21 @@ RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         for i, v in game.Workspace:GetChildren() do
+            if v.Name == Player.Name then return end
             if v:FindFirstChild("Humanoid") then
                 if v:FindFirstChild("Knife") then
                     print(v.Name, " has the knife")
                 end
                 if v:FindFirstChild("Gun") then
-                    print(v.Name, " has the knife")
+                    print(v.Name, " has the gun")
                 end
             end
+        end
+
+        if Player.Backpack:FindFirstChild("Knife") then
+            print("You have the knife, finish all of them.")
+        elseif Player.Backpack:FindFirstChild("Gun") then
+            print("You have the gun, find the murderer.")
         end
     end
 end)
