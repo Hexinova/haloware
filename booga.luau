@@ -1,1 +1,1 @@
-
+print([+] Booga Script Loaded!)
