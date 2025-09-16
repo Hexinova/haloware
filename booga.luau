@@ -1,1 +1,1 @@
-print([+] Booga Script Loaded!)
+print("[+] Booga Script Loaded!")
